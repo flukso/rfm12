@@ -290,6 +290,9 @@ ISR(RFM12_INT_VECT, ISR_NOBLOCK)
 			//flag the buffer as free again
 			ctrl.txstate = STATUS_FREE;
 
+			//set the length of the tx buffer to 0
+			rf_tx_buffer.len = 0;
+
 			//wakeup timer feature
 			#if RFM12_USE_WAKEUP_TIMER
 				//clear wakeup timer once

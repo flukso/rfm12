@@ -178,12 +178,12 @@ static void spi_init(void)
 {
 	DDR_MOSI   |= (_BV(BIT_MOSI));
 	DDR_SCK    |= (_BV(BIT_SCK));
-	PORT_SPI   |= (_BV(BIT_SPI_SS));
-	DDR_SPI    |= (_BV(BIT_SPI_SS));
-
 	DDR_MISO   &= ~(_BV(BIT_MISO));
 
 	#if !(RFM12_SPI_SOFTWARE)
+	PORT_SPI   |= (_BV(BIT_SPI_SS));
+	DDR_SPI    |= (_BV(BIT_SPI_SS));
+
 	SPCR = (1<<SPE)|(1<<MSTR)|(1<<SPR0);//SPI Master, clk/16
 	#endif
 }

@@ -271,8 +271,27 @@ extern rfm12_control_t ctrl;
 	{
 		return (uint8_t*) ctrl.rf_buffer_out->buffer;
 	}
+
+	static inline uint8_t rfm12_rx_byte(uint8_t i)
+	{
+		return ctrl.rf_buffer_out->buffer[i];
+	}
+
 #endif /* !(RFM12_TRANSMIT_ONLY) */
 
+static inline uint8_t rfm12_tx_buffer_add(uint8_t byte)
+{
+	if (rf_tx_buffer.len >= RFM12_TX_BUFFER_SIZE)
+		return RFM12_TX_ERROR;
+
+	//exit if the buffer isn't free
+	if (ctrl.txstate != STATUS_FREE)
+		return RFM12_TX_OCCUPIED;
+
+	rf_tx_buffer.buffer[++rf_tx_buffer.len] = byte;
+
+	return 0;
+}
 
 /************************
  * include headers for all the optional stuff in here
