@@ -288,7 +288,7 @@ static inline uint8_t rfm12_tx_buffer_add(uint8_t byte)
 	if (ctrl.txstate != STATUS_FREE)
 		return RFM12_TX_OCCUPIED;
 
-	rf_tx_buffer.buffer[++rf_tx_buffer.len] = byte;
+	rf_tx_buffer.buffer[rf_tx_buffer.len++] = byte;
 
 	return 0;
 }
