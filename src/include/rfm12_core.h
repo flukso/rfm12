@@ -134,6 +134,18 @@
 	#define RFM12_SPI_SOFTWARE 0
 #endif
 
+//if usart spi is not defined, we won't use this feature
+#ifndef RFM12_SPI_USART
+	#define RFM12_SPI_USART 0
+#endif
+
+//default usart spi clock setting
+#ifndef USART_BAUD_RATE
+	#define USART_BAUD_RATE 200000UL
+#endif
+
+#define USART_BAUD_PRESCALE ( (F_CPU) / ((USART_BAUD_RATE) * 2L) - 1 )
+
 //if uart debug is not defined, we won't use this feature
 #ifndef RFM12_UART_DEBUG
 	#define RFM12_UART_DEBUG 0

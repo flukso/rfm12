@@ -20,7 +20,7 @@
 
 /******************************************************
  *    THIS FILE IS BEING INCLUDED DIRECTLY		*
- *		(for performance reasons)				*
+ *		(for performance reasons)		*
  ******************************************************/
 
 //hardware spi helper macros
@@ -59,7 +59,20 @@ static uint8_t spi_data(uint8_t c)
 static void __attribute__ ((noinline)) rfm12_data(uint16_t d)
 {
 	SS_ASSERT();
-	#if !(RFM12_SPI_SOFTWARE)
+
+	#if RFM12_SPI_USART
+	uint8_t dummy;
+
+	UDR0 = d>>8;
+	while (!(UCSR0A & (1<<RXC0)));
+
+	dummy = UDR0;
+	UDR0 = d & 0xff;
+	while (!(UCSR0A & (1<<RXC0)));
+
+	dummy = UDR0;
+
+	#elif !(RFM12_SPI_SOFTWARE)
 	SPDR = d>>8;
 	while(!(SPSR & (1<<SPIF)));
 
@@ -81,7 +94,17 @@ static uint16_t __attribute__ ((noinline)) rfm12_read(uint16_t c)
 	uint16_t retval;
 	SS_ASSERT();
 
-	#if !(RFM12_SPI_SOFTWARE)
+	#if RFM12_SPI_USART
+	UDR0 = c>>8;
+	while (!(UCSR0A & (1<<RXC0)));
+
+	retval = UDR0<<8;
+	UDR0 = c & 0xff;
+	while (!(UCSR0A & (1<<RXC0)));
+
+	retval |= UDR0;
+
+	#elif !(RFM12_SPI_SOFTWARE)
 	SPDR = c>>8;
 	while(!(SPSR & (1<<SPIF)));
 	retval = SPDR<<8;
@@ -105,7 +128,15 @@ static uint16_t __attribute__ ((noinline)) rfm12_read(uint16_t c)
 static uint8_t rfm12_read_int_flags_inline(void)
 {
 	SS_ASSERT();
-	#if !(RFM12_SPI_SOFTWARE)
+
+	#if RFM12_SPI_USART
+	UDR0 = 0;
+	while (!(UCSR0A & (1<<RXC0)));
+
+	SS_RELEASE();
+	return UDR0;
+
+	#elif !(RFM12_SPI_SOFTWARE)
 	SPDR = 0;
 	while(!(SPSR & (1<<SPIF)));
 	SS_RELEASE();
@@ -133,7 +164,20 @@ static uint8_t rfm12_read_int_flags_inline(void)
 static void rfm12_data_inline(uint8_t cmd, uint8_t d)
 {
 	SS_ASSERT();
-	#if !(RFM12_SPI_SOFTWARE)
+
+	#if RFM12_SPI_USART
+	uint8_t dummy;
+
+	UDR0 = cmd;
+	while (!(UCSR0A & (1<<RXC0)));
+
+	dummy = UDR0;
+	UDR0 = d;
+	while (!(UCSR0A & (1<<RXC0)));
+
+	dummy = UDR0;
+
+	#elif !(RFM12_SPI_SOFTWARE)
 	SPDR = cmd;
 	while(!(SPSR & (1<<SPIF)));
 
@@ -154,7 +198,20 @@ static uint8_t rfm12_read_fifo_inline(void)
 {
 	SS_ASSERT();
 
-	#if !(RFM12_SPI_SOFTWARE)
+	#if RFM12_SPI_USART
+	uint8_t dummy;
+
+	UDR0 = ( RFM12_CMD_READ >> 8 );
+	while (!(UCSR0A & (1<<RXC0)));
+
+	dummy = UDR0; // read and discard the first byte shifted in
+	UDR0 = 0;
+	while (!(UCSR0A & (1<<RXC0)));
+
+	SS_RELEASE();
+	return UDR0;	
+
+	#elif !(RFM12_SPI_SOFTWARE)
 	SPDR =  ( RFM12_CMD_READ >> 8 );
 	while(!(SPSR & (1<<SPIF)));
 
@@ -176,14 +233,37 @@ static uint8_t rfm12_read_fifo_inline(void)
 
 static void spi_init(void)
 {
-	DDR_MOSI   |= (_BV(BIT_MOSI));
-	DDR_SCK    |= (_BV(BIT_SCK));
-	DDR_MISO   &= ~(_BV(BIT_MISO));
+	#if RFM12_SPI_USART
+	/* AVR317 app note: To ensure that the XCK line is initialized correctly
+	 * according to the SPI mode settings, it is important that the UBRR is
+	 * set to zero at the time the transmitter is enabled. After enabling the
+         * transmitter, the correct value can be set.
+	 */
+	UBRR0 = 0;
 
-	#if !(RFM12_SPI_SOFTWARE)
+	/* XCK0 as output to configure as master clk */
+	DDRD |= (1<<DDD4);
+
+	/* Master SPI (MSPIM), MSB, SPI mode 0 */
+	UCSR0C = (1<<UMSEL01) | (1<<UMSEL00) | (0<<UDORD0) | (0<<UCPHA0) | (0<<UCPOL0);
+
+	/* Enable USART Tx and Rx */
+	UCSR0B = (1<<RXEN0) | (1<<TXEN0);
+
+	/* Set clock rate */
+	UBRR0H = (uint8_t)(USART_BAUD_PRESCALE>>8);
+	UBRR0L = (uint8_t)(USART_BAUD_PRESCALE);
+
+	#elif !(RFM12_SPI_SOFTWARE)
 	PORT_SPI   |= (_BV(BIT_SPI_SS));
 	DDR_SPI    |= (_BV(BIT_SPI_SS));
 
 	SPCR = (1<<SPE)|(1<<MSTR)|(1<<SPR0);//SPI Master, clk/16
+
+	#else
+	DDR_MOSI   |= (_BV(BIT_MOSI));
+	DDR_SCK    |= (_BV(BIT_SCK));
+	DDR_MISO   &= ~(_BV(BIT_MISO));
+
 	#endif
 }
