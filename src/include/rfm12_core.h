@@ -141,7 +141,7 @@
 
 //default usart spi clock setting
 #ifndef USART_BAUD_RATE
-	#define USART_BAUD_RATE 200000UL
+	#define USART_BAUD_RATE 2000000UL
 #endif
 
 #define USART_BAUD_PRESCALE ( (F_CPU) / ((USART_BAUD_RATE) * 2L) - 1 )
