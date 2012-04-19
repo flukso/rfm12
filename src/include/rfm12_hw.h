@@ -401,8 +401,11 @@
 	according to the external load capacitance.
 */
 
-#define RFM12_CMD_PLL 	0xCC02
-#define RFM12_PLL_DDY 	0x08
+#define RFM12_CMD_PLL 	0xCC12
+#define RFM12_PLL_5_10 	0x60
+#define RFM12_PLL_33 	0x40
+#define RFM12_PLL_25 	0x00
+#define RFM12_PLL_DLY 	0x08
 #define RFM12_PLL_DDIT 	0x04
 #define RFM12_PLL_BW0 	0x01
 

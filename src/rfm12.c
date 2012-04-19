@@ -603,29 +603,33 @@ void rfm12_init(void)
 	//set rx parameters: int-in/vdi-out pin is vdi-out,
 	//Bandwith, LNA, RSSI
 	rfm12_data(RFM12_CMD_RXCTRL | RFM12_RXCTRL_P16_VDI
-			| RFM12_RXCTRL_VDI_FAST | RFM12_RXCTRL_BW_400 | RFM12_RXCTRL_LNA_6
-			| RFM12_RXCTRL_RSSI_79 );
+			| RFM12_RXCTRL_VDI_FAST | RFM12_RXCTRL_BW_134 | RFM12_RXCTRL_LNA_0
+			| RFM12_RXCTRL_RSSI_91 );
 
 	//automatic clock lock control(AL), digital Filter(!S),
-	//Data quality detector value 3, slow clock recovery lock
-	rfm12_data(RFM12_CMD_DATAFILTER | RFM12_DATAFILTER_AL | 3);
+	//Data quality detector value 4, slow clock recovery lock
+	rfm12_data(RFM12_CMD_DATAFILTER | RFM12_DATAFILTER_AL | 4);
 
 	//2 Byte Sync Pattern, Start fifo fill when sychron pattern received,
 	//disable sensitive reset, Fifo filled interrupt at 8 bits
 	rfm12_data(RFM12_CMD_FIFORESET | RFM12_FIFORESET_DR | (8<<4));
 
-	//set AFC to automatic, (+4 or -3)*2.5kHz Limit, fine mode, active and enabled
-	rfm12_data(RFM12_CMD_AFC | RFM12_AFC_AUTO_KEEP | RFM12_AFC_LIMIT_4
-				| RFM12_AFC_FI | RFM12_AFC_OE | RFM12_AFC_EN);
+	//set AFC to keep the offset during rx, no Limit, fine mode off, active and enabled
+	rfm12_data(RFM12_CMD_AFC | RFM12_AFC_AUTO_VDI | RFM12_AFC_LIMIT_OFF
+				| RFM12_AFC_OE | RFM12_AFC_EN);
 
-	//set TX Power to -0dB, frequency shift = +-125kHz
-	rfm12_data(RFM12_CMD_TXCONF | RFM12_TXCONF_POWER_0 | RFM12_TXCONF_FS_CALC(125000) );
+	//set TX Power to -0dB, frequency shift = +-90kHz
+	rfm12_data(RFM12_CMD_TXCONF | RFM12_TXCONF_POWER_0 | RFM12_TXCONF_FS_CALC(90000) );
+
+    //PPL settings left to POR defaults
 
 	//disable low dutycycle mode
 	rfm12_data(RFM12_CMD_DUTYCYCLE);
 
 	//disable wakeup timer
 	rfm12_data(RFM12_CMD_WAKEUP);
+
+    //low batt detection and uC clk division not used
 
 	//store the syncronization pattern to the transmission buffer
 	//the sync pattern is used by the receiver to distinguish noise from real transmissions
