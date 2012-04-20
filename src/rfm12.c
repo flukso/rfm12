@@ -36,6 +36,7 @@
 */
 #include <avr/io.h>
 #include <avr/interrupt.h>
+#include <util/crc16.h>
 #include <string.h>
 
 
@@ -128,6 +129,7 @@ ISR(RFM12_INT_VECT, ISR_NOBLOCK)
 
 	//if receive mode is not disabled (default)
 	#if !(RFM12_TRANSMIT_ONLY)
+		uint8_t data;
 		static uint8_t checksum; //static local variables produce smaller code size than globals
 	#endif /* !(RFM12_TRANSMIT_ONLY) */
 
@@ -174,33 +176,29 @@ ISR(RFM12_INT_VECT, ISR_NOBLOCK)
 		case STATE_RX_IDLE:
 			//if receive mode is not disabled (default)
 			#if !(RFM12_TRANSMIT_ONLY)
-				//init the bytecounter - remember, we will read the length byte, so this must be 1
-				ctrl.bytecount = 1;
+				data = rfm12_read_fifo_inline();
 
-				//read the length byte,  and write it to the checksum
-				//remember, the first byte is the length byte
-				checksum = rfm12_read_fifo_inline();
-
-				//add the packet overhead and store it into a working variable
-				ctrl.num_bytes = checksum + PACKET_OVERHEAD;
-
-				//debug
-				#if RFM12_UART_DEBUG >= 2
-					uart_putc('I');
-					uart_putc(checksum);
-				#endif
-
-				//see whether our buffer is free
-				//FIXME: put this into global statekeeping struct, the free state can be set by the function which pulls the packet, i guess
 				if(ctrl.rf_buffer_in->status == STATUS_FREE)
 				{
-					//the current receive buffer is empty, so we start receiving
-					ctrl.rfm12_state = STATE_RX_ACTIVE;
+					//init the bytecounter - we're adding the GRP byte to the packet head as well!
+					ctrl.bytecount = 2;
 
-					//store the received length into the packet buffer
-					//FIXME:  why the hell do we need this?!
-					//in principle, the length is stored alongside with the buffer.. the only problem is, that the buffer might be cleared during reception
-					ctrl.rf_buffer_in->len = checksum;
+					//store the GRP byte at the head of the buffer
+					//TODO hardcoded right now to 0xD4 -> make this configurable!
+					ctrl.rf_buffer_in->buffer[0] = SYNC_LSB;
+					checksum = _crc16_update(~0, SYNC_LSB);
+
+					//store the HDR byte
+					ctrl.rf_buffer_in->buffer[1] = data;
+					checksum = _crc16_update(checksum, data);
+
+					//debug
+					#if RFM12_UART_DEBUG >= 2
+						uart_putc('I');
+						uart_putc(checksum);
+					#endif
+
+					ctrl.rfm12_state = STATE_RX_LEN;
 
 					//end the interrupt without resetting the fifo
 					goto END;
@@ -210,15 +208,37 @@ ISR(RFM12_INT_VECT, ISR_NOBLOCK)
 			#endif /* !(RFM12_TRANSMIT_ONLY) */
 			break;
 
+		case STATE_RX_LEN:
+			//if receive mode is not disabled (default)
+			#if !(RFM12_TRANSMIT_ONLY)
+				//store the LEN byte
+				data = rfm12_read_fifo_inline();
+				ctrl.rf_buffer_in->buffer[2] = data;
+				checksum = _crc16_update(checksum, data);
+
+				ctrl.num_bytes = data + PACKET_OVERHEAD;
+
+				//debug
+				#if RFM12_UART_DEBUG >= 2
+					uart_putc('L');
+					uart_putc(checksum);
+				#endif
+
+				ctrl.bytecount++;
+				ctrl.rfm12_state = STATE_RX_ACTIVE;
+
+				//end the interrupt without resetting the fifo
+				goto END;
+	
+			#endif /* !(RFM12_TRANSMIT_ONLY) */
+			break;
+
 		case STATE_RX_ACTIVE:
 			//if receive mode is not disabled (default)
 			#if !(RFM12_TRANSMIT_ONLY)
 				//check if transmission is complete
 				if(ctrl.bytecount < ctrl.num_bytes)
 				{
-					uint8_t data;
-
-					//read a byte
 					data = rfm12_read_fifo_inline();
 
 					//debug
@@ -227,25 +247,13 @@ ISR(RFM12_INT_VECT, ISR_NOBLOCK)
 						uart_putc(data);
 					#endif
 
-					//xor the remaining bytes onto the checksum
-					//note: only the header will be effectively checked
-					checksum ^= data;
-
 					//put next byte into buffer, if there is enough space
-					if(ctrl.bytecount < (RFM12_RX_BUFFER_SIZE + 3))
+					if(ctrl.bytecount < RFM12_RX_BUFFER_SIZE)
 					{
-						//hackhack: begin writing to struct at offsetof len
-						(& ctrl.rf_buffer_in->len)[ctrl.bytecount] = data;
+						ctrl.rf_buffer_in->buffer[ctrl.bytecount] = data;
+						checksum = _crc16_update(checksum, data);
 					}
 
-					//check header against checksum
-					if (ctrl.bytecount == 2 && checksum != 0xff)
-					{
-						//if the checksum does not match, reset the fifo
-						break;
-					}
-
-					//increment bytecount
 					ctrl.bytecount++;
 
 					//end the interrupt without resetting the fifo
@@ -259,6 +267,12 @@ ISR(RFM12_INT_VECT, ISR_NOBLOCK)
 				#if RFM12_UART_DEBUG >= 2
 					uart_putc('D');
 				#endif
+
+				if (checksum != 0)
+				{
+					//if the checksum does not match, reset the fifo
+					break;
+				}
 
 				//indicate that the buffer is ready to be used
 				ctrl.rf_buffer_in->status = STATUS_COMPLETE;

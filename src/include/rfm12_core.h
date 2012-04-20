@@ -35,12 +35,9 @@
 
 //these are the states for the receive/transmit state machine
 #define STATE_RX_IDLE 0
-#define STATE_RX_ACTIVE 1
-#define STATE_TX 2
-
-//packet header length in bytes
-#define PACKET_OVERHEAD 3
-
+#define STATE_RX_LEN 1
+#define STATE_RX_ACTIVE 2
+#define STATE_TX 3
 
 /************************
 * LIBRARY DEFAULT SETTINGS	

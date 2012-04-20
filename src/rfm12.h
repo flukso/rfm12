@@ -67,6 +67,8 @@
 #define RFM12_TX_ENQUEUED 0x80
 //@}
 
+//packet overhead = GRP(1) + TYP(1) + LEN(1) + CRC(2)
+#define PACKET_OVERHEAD 5
 
 /************************
  * function protoypes
@@ -251,7 +253,7 @@ extern rfm12_control_t ctrl;
 	*/
 	static inline uint8_t rfm12_rx_len(void)
 	{
-		return ctrl.rf_buffer_out->len;
+		return ctrl.rf_buffer_out->buffer[2] + PACKET_OVERHEAD;
 	}
 
 	//! Inline function to return the rx buffer type field.
