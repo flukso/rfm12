@@ -67,6 +67,7 @@
 #define RFM12_TX_ENQUEUED 0x80
 //@}
 
+#define RFM12_MAXDATA 66
 //packet overhead = GRP(1) + TYP(1) + LEN(1) + CRC(2)
 #define PACKET_OVERHEAD 5
 

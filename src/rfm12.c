@@ -213,6 +213,10 @@ ISR(RFM12_INT_VECT, ISR_NOBLOCK)
 			#if !(RFM12_TRANSMIT_ONLY)
 				//store the LEN byte
 				data = rfm12_read_fifo_inline();
+
+				// reset fifo when length byte is out of spec
+				if (data > RFM12_MAXDATA) break;
+
 				ctrl.rf_buffer_in->buffer[2] = data;
 				checksum = _crc16_update(checksum, data);
 
