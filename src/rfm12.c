@@ -130,7 +130,7 @@ ISR(RFM12_INT_VECT, ISR_NOBLOCK)
 	//if receive mode is not disabled (default)
 	#if !(RFM12_TRANSMIT_ONLY)
 		uint8_t data;
-		static uint8_t checksum; //static local variables produce smaller code size than globals
+		static uint16_t checksum; //static local variables produce smaller code size than globals
 	#endif /* !(RFM12_TRANSMIT_ONLY) */
 
 	//first we read the first byte of the status register
@@ -296,7 +296,7 @@ ISR(RFM12_INT_VECT, ISR_NOBLOCK)
 			if(ctrl.bytecount < ctrl.num_bytes)
 			{
 				//load the next byte from our buffer struct.
-				rfm12_data_inline( (RFM12_CMD_TX>>8), rf_tx_buffer.sync[ctrl.bytecount++]);
+				rfm12_data_inline( (RFM12_CMD_TX>>8), rf_tx_buffer.buffer[ctrl.bytecount++]);
 
 				//end the interrupt without resetting the fifo
 				goto END;
@@ -433,7 +433,7 @@ void rfm12_tick(void)
 	#endif
 
 	//do we have something to transmit?
-	if(ctrl.txstate == STATUS_OCCUPIED)
+	if(ctrl.txstate == STATUS_COMPLETE)
 	{ //yes: start transmitting
 		//disable the interrupt (as we're working directly with the transceiver now)
 		//hint: we could be losing an interrupt here, too
@@ -448,8 +448,8 @@ void rfm12_tick(void)
 		rfm12_data(RFM12_CMD_PWRMGT | PWRMGT_DEFAULT);
 
 		//calculate number of bytes to be sent by ISR
-		//2 sync bytes + len byte + type byte + checksum + message length + 1 dummy byte
-		ctrl.num_bytes = rf_tx_buffer.len + 6;
+		//sync + header + body + crc is already accounted for + 1 dummy byte
+		ctrl.num_bytes = rf_tx_buffer.len + 1;
 
 		//reset byte sent counter
 		ctrl.bytecount = 0;
@@ -475,87 +475,6 @@ void rfm12_tick(void)
 		RFM12_INT_ON();
 	}
 }
-
-
-//! Enqueue an already buffered packet for transmission
-/** If there is no active transmission, the packet header is written to the
-* transmission control buffer and the packet will be enqueued for transmission. \n
-* This function is not responsible for buffering the actual packet data.
-* The data has to be copied into the transmit buffer beforehand,
-* which can be accomplished by the rfm12_tx() function.
-*
-* \note Note that this function does not start the transmission, it merely enqueues the packet. \n
-* Transmissions are started by rfm12_tick().
-* \param [type] The packet header type field
-* \param [length] The packet data length
-* \returns One of these defines: \ref tx_retvals "TX return values"
-* \see rfm12_tx() and rfm12_tick()
-*/
-#if (RFM12_NORETURNS)
-void
-#else
-uint8_t
-#endif
-rfm12_start_tx(uint8_t type, uint8_t length)
-{
-	//exit if the buffer isn't free
-	if(ctrl.txstate != STATUS_FREE)
-		return TXRETURN(RFM12_TX_OCCUPIED);
-
-	//write airlab header to buffer
-	rf_tx_buffer.len = length;
-	rf_tx_buffer.type = type;
-	rf_tx_buffer.checksum = length ^ type ^ 0xff;
-
-	//schedule packet for transmission
-	ctrl.txstate = STATUS_OCCUPIED;
-
-	return TXRETURN(RFM12_TX_ENQUEUED);
-}
-
-
-//! Copy a packet to the buffer and call rfm12_start_tx() to enqueue it for transmission.
-/** If there is no active transmission, the buffer contents will be copied to the
-* internal transmission buffer. Finally the buffered packet is going to be enqueued by
-* calling rfm12_start_tx(). If automatic buffering of packet data is not necessary,
-* which is the case when the packet data does not change while the packet is enqueued
-* for transmission, then one could directly store the data in \ref rf_tx_buffer
-* (see rf_tx_buffer_t) and use the rfm12_start_tx() function.
-*
-* \note Note that this function does not start the transmission, it merely enqueues the packet. \n
-* Transmissions are started by rfm12_tick().
-* \param [len] The packet data length
-* \param [type] The packet header type field
-* \param [data] Pointer to the packet data
-* \returns One of these defines: \ref tx_retvals "TX return values"
-* \see rfm12_start_tx() and rfm12_tick()
-*/
-#if (RFM12_NORETURNS)
-void
-#else
-uint8_t
-#endif
-rfm12_tx(uint8_t len, uint8_t type, uint8_t *data)
-{
-	#if RFM12_UART_DEBUG
-		uart_putstr ("sending packet\r\n");
-	#endif
-
-	if (len > RFM12_TX_BUFFER_SIZE) return TXRETURN(RFM12_TX_ERROR);
-
-	//exit if the buffer isn't free
-	if(ctrl.txstate != STATUS_FREE)
-		return TXRETURN(RFM12_TX_OCCUPIED);
-
-	memcpy ( rf_tx_buffer.buffer, data, len );
-
-	#if (!(RFM12_NORETURNS))
-	return rfm12_start_tx (type, len);
-	#else
-	rfm12_start_tx (type, len);
-	#endif
-}
-
 
 //if receive mode is not disabled (default)
 #if !(RFM12_TRANSMIT_ONLY)

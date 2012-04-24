@@ -63,6 +63,8 @@
 #define RFM12_TX_ERROR 0x02
 //! The transmit buffer is already occupied
 #define RFM12_TX_OCCUPIED 0x03
+//! We could not get a lock on the transmit buffer
+#define RFM12_TX_DISCARD 0x04
 //! The packet has been enqueued successfully
 #define RFM12_TX_ENQUEUED 0x80
 //@}
@@ -86,15 +88,6 @@ void rfm12_tick(void);
 
 //FIXME: the tx function should return a status, do we need to do this also?
 // uint8_t rfm12_tx_status();
-
-#if (RFM12_NORETURNS)
-//see rfm12.c for more documentation
-void rfm12_start_tx(uint8_t type, uint8_t length);
-void rfm12_tx(uint8_t len, uint8_t type, uint8_t *data);
-#else
-uint8_t rfm12_start_tx(uint8_t type, uint8_t length);
-uint8_t rfm12_tx(uint8_t len, uint8_t type, uint8_t *data);
-#endif
 
 //if polling is used, define a polling function
 #if RFM12_USE_POLLING
@@ -282,18 +275,39 @@ extern rfm12_control_t ctrl;
 
 #endif /* !(RFM12_TRANSMIT_ONLY) */
 
-static inline uint8_t rfm12_tx_buffer_add(uint8_t byte)
+static inline uint8_t rfm12_tx_occupy(void)
 {
-	if (rf_tx_buffer.len >= RFM12_TX_BUFFER_SIZE)
-		return RFM12_TX_ERROR;
-
-	//exit if the buffer isn't free
 	if (ctrl.txstate != STATUS_FREE)
 		return RFM12_TX_OCCUPIED;
+
+	ctrl.txstate = STATUS_OCCUPIED;
+	//pre-fill the tx buffer with the SYNC_MSB
+	rf_tx_buffer.buffer[0] = 0x2D;
+	rf_tx_buffer.len = 1;
+
+    return 0;
+}
+
+static inline uint8_t rfm12_tx_buffer_add(uint8_t byte)
+{
+	//exit if we couldn't get a lock on the tx buffer
+	if (ctrl.txstate != STATUS_OCCUPIED)
+		return RFM12_TX_DISCARD;
+
+	if (rf_tx_buffer.len > RFM12_TX_BUFFER_SIZE)
+		return RFM12_TX_ERROR;
 
 	rf_tx_buffer.buffer[rf_tx_buffer.len++] = byte;
 
 	return 0;
+}
+
+static inline uint8_t rfm12_tx_start(void)
+{
+	if (ctrl.txstate == STATUS_OCCUPIED && rf_tx_buffer.len > 1)
+		ctrl.txstate = STATUS_COMPLETE;
+
+    return 0;
 }
 
 /************************
