@@ -46,49 +46,81 @@
 */
 
 
-/************************
- * PIN DEFINITIONS
- */
-
 //Pin that the RFM12's slave select is connected to
-#define DDR_SS DDRB
-#define PORT_SS PORTB
-#define BIT_SS 2
+#define DDR_SS DDRD
+#define PORT_SS PORTD
+#define BIT_SS 3
 
 //SPI port
-#define DDR_SPI DDRB
-#define PORT_SPI PORTB
-#define PIN_SPI PINB
-#define BIT_MOSI 3
-#define BIT_MISO 4
-#define BIT_SCK  5
-#define BIT_SPI_SS 2
+// #define DDR_SPI DDRD
+// #define PORT_SPI PORTD
+// #define PIN_SPI PIND
+// #define BIT_MOSI 3
+// #define BIT_MISO 4
+// #define BIT_SCK  5
+// #define BIT_SPI_SS 2
 //this is the hardware SS pin of the AVR - it 
 //needs to be set to output for the spi-interface to work 
 //correctly, independently of the CS pin used for the RFM12
 
+/************************
+ * SPI PIN DEFINITIONS
+ */
+
+//SPI MOSI port = TXD = PD1
+#define DDR_MOSI DDRD
+#define PORT_MOSI PORTD
+
+//SPI MISO port = RXD = PD0
+#define DDR_MISO DDRD
+#define PIN_MISO PIND
+
+//SPI SCK port = XCK = PD4 
+#define DDR_SCK DDRD
+#define PORT_SCK PORTD
+
+//Pin that the RFM12's slave select is connected to = INT1 = PD3
+#define DDR_SS DDRD
+#define PORT_SS PORTD
+
+//SPI SS port = N/A as USART does not have a HW /SS pin
+//#define DDR_SPI_SS DDRD
+//#define PORT_SPI_SS PORTD
+
+//SPI pin numbers on their respective ports
+#define BIT_MOSI 1
+#define BIT_MISO 0
+#define BIT_SCK  4
+#define BIT_SS   3
+//#define BIT_SPI_SS x
+//this is the hardware SS pin of the AVR - it 
+//needs to be set to output for the spi-interface to work 
+//correctly, independently of the CS pin used for the RFM12
 
 /************************
  * RFM12 CONFIGURATION OPTIONS
  */
 
 //baseband of the module (either RFM12_BAND_433, RFM12_BAND_868 or RFM12_BAND_912)
-#define RFM12_BASEBAND RFM12_BAND_433
+#define RFM12_BASEBAND RFM12_BAND_868
 
 //center frequency to use (+-125kHz FSK frequency shift)
-#define FREQ 433175000UL
+#define FREQ 868000000UL
 
 //use this for datarates >= 2700 Baud
-#define DATARATE_VALUE RFM12_DATARATE_CALC_HIGH(9600.0)
+#define DATARATE_VALUE RFM12_DATARATE_CALC_HIGH(49200.0)
 
 //use this for 340 Baud < datarate < 2700 Baud
-//#define DATARATE_VALUE RFM12_DATARATE_CALC_LOW(1200.0)
+//#define DATARATE_VALUE RFM12_DATARATE_CALC_LOW(340.0)
 
-//TX BUFFER SIZE
-#define RFM12_TX_BUFFER_SIZE 30
+//TX BUFFER SIZE (we're storing the first sync byte in the tx buffer as well, hence the +1)
+#define RFM12_TX_BUFFER_SIZE RFM12_MAXDATA + PACKET_OVERHEAD + 1
+
+//dedicated TX ACK buffer
+#define RFM12_TX_ACK_SIZE PACKET_OVERHEAD + 1
 
 //RX BUFFER SIZE (there are going to be 2 Buffers of this size for double_buffering)
-#define RFM12_RX_BUFFER_SIZE 30
+#define RFM12_RX_BUFFER_SIZE RFM12_MAXDATA + PACKET_OVERHEAD
 
 
 /************************
@@ -97,22 +129,22 @@
  */
  
 //the interrupt vector
-#define RFM12_INT_VECT (INT1_vect)
+#define RFM12_INT_VECT (INT0_vect)
 
 //the interrupt mask register
-#define RFM12_INT_MSK GICR
+#define RFM12_INT_MSK EIMSK
 
 //the interrupt bit in the mask register
-#define RFM12_INT_BIT (INT1)
+#define RFM12_INT_BIT (INT0)
 
 //the interrupt flag register
-#define RFM12_INT_FLAG GIFR
+#define RFM12_INT_FLAG EIFR
 
 //the interrupt bit in the flag register
-#define RFM12_FLAG_BIT (INTF1)
+#define RFM12_FLAG_BIT (INTF0)
 
 //setup the interrupt to trigger on negative edge
-#define RFM12_INT_SETUP()   MCUCR |= (1<<ISC11)
+#define RFM12_INT_SETUP()   EICRA |= (1<<ISC01)
 
 
 /************************
@@ -124,6 +156,7 @@
 #define RFM12_NOCOLLISIONDETECTION 0
 #define RFM12_TRANSMIT_ONLY 0
 #define RFM12_SPI_SOFTWARE 0
+#define RFM12_SPI_USART 1
 #define RFM12_USE_POLLING 0
 #define RFM12_RECEIVE_ASK 0
 #define RFM12_TRANSMIT_ASK 0
