@@ -129,7 +129,7 @@ ISR(RFM12_INT_VECT, ISR_NOBLOCK)
 
 	//if receive mode is not disabled (default)
 	#if !(RFM12_TRANSMIT_ONLY)
-		uint8_t data;
+		uint8_t i, data;
 		static uint16_t checksum; //static local variables produce smaller code size than globals
 	#endif /* !(RFM12_TRANSMIT_ONLY) */
 
@@ -278,12 +278,57 @@ ISR(RFM12_INT_VECT, ISR_NOBLOCK)
 					break;
 				}
 
+				//check whether the sensor node requested an ack 
+				if (ctrl.rf_buffer_in->buffer[1] & HDR_ACK)
+				{
+					rf_tx_buffer.ack[0] = SYNC_MSB;
+					rf_tx_buffer.ack[1] = SYNC_LSB;
+					rf_tx_buffer.ack[2] = HDR_CTL | (ctrl.rf_buffer_in->buffer[1] & HDR_NODE_ID);
+                    // we reply differently to unicast or broadcast packets
+					rf_tx_buffer.ack[2] |= (ctrl.rf_buffer_in->buffer[1] & HDR_DST) ? 0 : HDR_DST;
+					rf_tx_buffer.ack[3] = 0x00;
+
+                    //CRC-16 is calculated over entire packet except SYN(1)
+					checksum = ~0;
+
+					for (i=1; i<4; i++) {
+						checksum = _crc16_update(checksum, rf_tx_buffer.ack[i]);
+					}
+
+					rf_tx_buffer.ack[4] = checksum;
+					rf_tx_buffer.ack[5] = checksum >> 8;                 
+
+					//set up transciever for immediate tx of ack packet
+
+					//disable rx
+					rfm12_data(RFM12_CMD_PWRMGT | PWRMGT_DEFAULT);
+
+					//sending an extra dummy byte
+					ctrl.num_bytes = RFM12_TX_ACK_SIZE + 1;
+					ctrl.bytecount = 0;
+
+					ctrl.rfm12_state = STATE_TX_ACK;
+
+					//fill data register with preamble
+					rfm12_data(RFM12_CMD_TX | PREAMBLE);
+					rfm12_data(RFM12_CMD_TX | PREAMBLE);
+
+					//enable tx
+					rfm12_data(RFM12_CMD_PWRMGT | PWRMGT_DEFAULT | RFM12_PWRMGT_ET);
+
+					//complete rx buffer processing before jumping to END
+				}
+
 				//indicate that the buffer is ready to be used
 				ctrl.rf_buffer_in->status = STATUS_COMPLETE;
 
 				//switch to other buffer
 				ctrl.buffer_in_num = (ctrl.buffer_in_num + 1) % 2;
 				ctrl.rf_buffer_in = &rf_rx_buffers[ctrl.buffer_in_num];
+
+				if (ctrl.rfm12_state == STATE_TX_ACK)
+					goto END;
+	
 			#endif /* !(RFM12_TRANSMIT_ONLY) */
 			break;
 
@@ -329,6 +374,41 @@ ISR(RFM12_INT_VECT, ISR_NOBLOCK)
 			//load a dummy byte to clear int status
 			rfm12_data_inline( (RFM12_CMD_TX>>8), 0xaa);
 			break;
+
+		case STATE_TX_ACK:
+			//debug
+			#if RFM12_UART_DEBUG >= 2
+				uart_putc('A');
+			#endif
+
+			if(ctrl.bytecount < ctrl.num_bytes)
+			{
+				//load the next byte from our buffer struct.
+				rfm12_data_inline( (RFM12_CMD_TX>>8), rf_tx_buffer.ack[ctrl.bytecount++]);
+
+				//end the interrupt without resetting the fifo
+				goto END;
+			}
+
+			/* if we're here, we're finished transmitting the bytes */
+			/* the fifo will be reset at the end of the function */
+
+			//wakeup timer feature
+			#if RFM12_USE_WAKEUP_TIMER
+				//clear wakeup timer once
+				rfm12_data(ctrl.pwrmgt_shadow & ~RFM12_PWRMGT_EW);
+				//set shadow register to default receive state
+				//the define correctly handles the transmit only mode
+				ctrl.pwrmgt_shadow = (RFM12_CMD_PWRMGT | PWRMGT_RECEIVE);
+			#endif /* RFM12_USE_WAKEUP_TIMER */
+
+			//turn off the transmitter and enable receiver
+			rfm12_data(RFM12_CMD_PWRMGT | PWRMGT_RECEIVE);
+
+			//load a dummy byte to clear int status
+			rfm12_data_inline( (RFM12_CMD_TX>>8), 0xaa);
+			break;
+
 	}
 
 	//set the state machine to idle
@@ -567,12 +647,6 @@ void rfm12_init(void)
 	rfm12_data(RFM12_CMD_WAKEUP);
 
     //low batt detection and uC clk division not used
-
-	//store the syncronization pattern to the transmission buffer
-	//the sync pattern is used by the receiver to distinguish noise from real transmissions
-	//the sync pattern is hardcoded into the receiver
-	rf_tx_buffer.sync[0] = SYNC_MSB;
-	rf_tx_buffer.sync[1] = SYNC_LSB;
 
 	//if receive mode is not disabled (default)
 	#if !(RFM12_TRANSMIT_ONLY)

@@ -33,11 +33,18 @@
 #define SYNC_MSB 0x2D
 #define SYNC_LSB 0xD4
 
+//HDR bits
+#define HDR_CTL		0x80
+#define HDR_DST		0x40
+#define HDR_ACK		0x20
+#define HDR_NODE_ID	0x1F
+
 //these are the states for the receive/transmit state machine
-#define STATE_RX_IDLE 0
-#define STATE_RX_LEN 1
-#define STATE_RX_ACTIVE 2
-#define STATE_TX 3
+#define STATE_RX_IDLE	0
+#define STATE_RX_LEN	1
+#define STATE_RX_ACTIVE	2
+#define STATE_TX		3
+#define STATE_TX_ACK	4
 
 /************************
 * LIBRARY DEFAULT SETTINGS	

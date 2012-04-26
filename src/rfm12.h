@@ -121,6 +121,9 @@ typedef struct
 
 	//! Buffer for the raw bytes to be transmitted.
 	uint8_t buffer[RFM12_TX_BUFFER_SIZE];
+
+	//! Dedicated ACK buffer
+	uint8_t ack[RFM12_TX_ACK_SIZE];
 } rf_tx_buffer_t;
 
 
