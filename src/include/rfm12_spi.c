@@ -255,15 +255,21 @@ static void spi_init(void)
 	UBRR0L = (uint8_t)(USART_BAUD_PRESCALE);
 
 	#elif !(RFM12_SPI_SOFTWARE)
+	DDR_MOSI   |= (_BV(BIT_MOSI));
+	DDR_SCK    |= (_BV(BIT_SCK));
 	PORT_SPI   |= (_BV(BIT_SPI_SS));
 	DDR_SPI    |= (_BV(BIT_SPI_SS));
+
+	DDR_MISO   &= ~(_BV(BIT_MISO));
 
 	SPCR = (1<<SPE)|(1<<MSTR)|(1<<SPR0);//SPI Master, clk/16
 
 	#else
 	DDR_MOSI   |= (_BV(BIT_MOSI));
 	DDR_SCK    |= (_BV(BIT_SCK));
-	DDR_MISO   &= ~(_BV(BIT_MISO));
+	PORT_SPI   |= (_BV(BIT_SPI_SS));
+	DDR_SPI    |= (_BV(BIT_SPI_SS));
 
+	DDR_MISO   &= ~(_BV(BIT_MISO));
 	#endif
 }
