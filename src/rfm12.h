@@ -36,6 +36,8 @@
  *      ( thou shalt not change lines below )         *
  *                                                    *
  ******************************************************/
+
+#include <util/crc16.h>
  
 #ifndef _RFM12_H
 #define _RFM12_H
@@ -70,7 +72,7 @@
 //@}
 
 #define RFM12_MAXDATA 66
-//packet overhead = GRP(1) + TYP(1) + LEN(1) + CRC(2)
+//packet overhead = GRP(1) + HDR(1) + LEN(1) + CRC(2)
 #define PACKET_OVERHEAD 5
 
 /************************
@@ -116,8 +118,8 @@ typedef struct
 	//! Type field for the simple airlab protocol.
 	uint8_t type;		
 
-	//! Checksum over the former two members.
-	uint8_t checksum;
+	//! Intermediate packet checksum value.
+	uint16_t checksum;
 
 	//! Buffer for the raw bytes to be transmitted.
 	uint8_t buffer[RFM12_TX_BUFFER_SIZE];
@@ -146,9 +148,6 @@ typedef struct
 
 		//! Type field for the simple airlab protocol.		
 		uint8_t type;
-		
-		//! Checksum over the type and length header fields
-		uint8_t checksum;
 		
 		//! The actual receive buffer data
 		uint8_t buffer[RFM12_RX_BUFFER_SIZE]; 
@@ -287,6 +286,7 @@ static inline uint8_t rfm12_tx_occupy(void)
 	//pre-fill the tx buffer with the SYNC_MSB
 	rf_tx_buffer.buffer[0] = 0x2D;
 	rf_tx_buffer.len = 1;
+	rf_tx_buffer.checksum = ~0;
 
     return 0;
 }
@@ -297,18 +297,26 @@ static inline uint8_t rfm12_tx_buffer_add(uint8_t byte)
 	if (ctrl.txstate != STATUS_OCCUPIED)
 		return RFM12_TX_DISCARD;
 
-	if (rf_tx_buffer.len > RFM12_TX_BUFFER_SIZE)
+	//we still need to add the CRC16
+	if (rf_tx_buffer.len > RFM12_TX_BUFFER_SIZE - 2)
 		return RFM12_TX_ERROR;
 
 	rf_tx_buffer.buffer[rf_tx_buffer.len++] = byte;
+    rf_tx_buffer.checksum = _crc16_update(rf_tx_buffer.checksum, byte);
 
 	return 0;
 }
 
 static inline uint8_t rfm12_tx_start(void)
 {
-	if (ctrl.txstate == STATUS_OCCUPIED && rf_tx_buffer.len > 1)
+	if (ctrl.txstate == STATUS_OCCUPIED && rf_tx_buffer.len > 1) {
+		rf_tx_buffer.buffer[rf_tx_buffer.len++] = rf_tx_buffer.checksum;
+		rf_tx_buffer.buffer[rf_tx_buffer.len++] = rf_tx_buffer.checksum >> 8;
+
 		ctrl.txstate = STATUS_COMPLETE;
+	} else {
+		ctrl.txstate = STATUS_FREE;
+	};
 
     return 0;
 }
