@@ -109,14 +109,8 @@ void rfm12_poll(void);
 */
 typedef struct
 {
-	//! Sync bytes for receiver to start filling fifo.
-	uint8_t sync[2];
-	
 	//! Length byte - number of bytes in buffer.
 	uint8_t len;
-
-	//! Type field for the simple airlab protocol.
-	uint8_t type;		
 
 	//! Intermediate packet checksum value.
 	uint16_t checksum;
@@ -146,9 +140,6 @@ typedef struct
 		//! Length byte - number of bytes in buffer.
 		uint8_t len;
 
-		//! Type field for the simple airlab protocol.		
-		uint8_t type;
-		
 		//! The actual receive buffer data
 		uint8_t buffer[RFM12_RX_BUFFER_SIZE]; 
 	} rf_rx_buffer_t;
@@ -250,15 +241,6 @@ extern rfm12_control_t ctrl;
 	static inline uint8_t rfm12_rx_len(void)
 	{
 		return ctrl.rf_buffer_out->buffer[2] + PACKET_OVERHEAD;
-	}
-
-	//! Inline function to return the rx buffer type field.
-	/** \returns The packet type from the packet header type field
-	* \see rfm12_rx_status(), rfm12_rx_len(), rfm12_rx_buffer(), rfm12_rx_clear() and rf_rx_buffer_t
-	*/
-	static inline uint8_t rfm12_rx_type(void)
-	{
-		return ctrl.rf_buffer_out->type;
 	}
 
 	//! Inline function to retreive current rf buffer contents.
