@@ -233,6 +233,18 @@ extern rfm12_control_t ctrl;
  * INLINE FUNCTIONS
  */
 
+static inline void rfm12_spi_enable(void)
+{
+	DDRD |= (1<<DDD3) | (1<<DDD4);
+	UCSR0B |= (1<<RXEN0) | (1<<TXEN0);
+}
+
+static inline void rfm12_spi_disable(void)
+{
+	UCSR0B &= ~((1<<RXEN0) | (1<<TXEN0));
+	DDRD &= ~((1<<DDD3) | (1<<DDD4));
+}
+
 //if receive mode is not disabled (default)
 #if !(RFM12_TRANSMIT_ONLY)
 	//! Inline function to return the rx buffer status byte.
