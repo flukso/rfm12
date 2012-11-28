@@ -255,6 +255,11 @@ static inline void rfm12_spi_disable(void)
 		return ctrl.rf_buffer_out->buffer[2] + PACKET_OVERHEAD;
 	}
 
+	static inline uint8_t rfm12_rx_typ(void)
+	{
+		return ctrl.rf_buffer_out->buffer[3];
+	}
+
 	//! Inline function to retreive current rf buffer contents.
 	/** \returns A pointer to the current receive buffer contents
 	* \see rfm12_rx_status(), rfm12_rx_len(), rfm12_rx_type(), rfm12_rx_clear() and rf_rx_buffer_t
