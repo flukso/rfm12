@@ -313,7 +313,7 @@ static inline uint8_t rfm12_tx_start(void)
 		rf_tx_buffer.buffer[rf_tx_buffer.len++] = rf_tx_buffer.checksum >> 8;
 
 		ctrl.txstate = STATUS_COMPLETE;
-	} else {
+	} else if (ctrl.txstate != STATUS_COMPLETE ) {
 		ctrl.txstate = STATUS_FREE;
 	};
 
