@@ -38,6 +38,7 @@
  ******************************************************/
 
 #include <util/crc16.h>
+#include "include/rfm12_hw.h"
  
 #ifndef _RFM12_H
 #define _RFM12_H
@@ -95,6 +96,8 @@ void rfm12_tick(void);
 #if RFM12_USE_POLLING
 void rfm12_poll(void);
 #endif
+
+void rfm12_grp_set(uint8_t grp);
 
 
 /************************
@@ -169,6 +172,9 @@ typedef struct
 	
 	//! Counter for the bytes we are transmitting or receiving at the moment.
 	uint8_t bytecount;
+
+	//! GRP we're currently listening on
+	uint8_t sync_lsb;
 
 	//if receive mode is not disabled (default)
 	#if !(RFM12_TRANSMIT_ONLY)	

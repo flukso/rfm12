@@ -184,9 +184,8 @@ ISR(RFM12_INT_VECT, ISR_NOBLOCK)
 					ctrl.bytecount = 2;
 
 					//store the GRP byte at the head of the buffer
-					//TODO hardcoded right now to 0xD4 -> make this configurable!
-					ctrl.rf_buffer_in->buffer[0] = SYNC_LSB;
-					checksum = _crc16_update(~0, SYNC_LSB);
+					ctrl.rf_buffer_in->buffer[0] = ctrl.sync_lsb;
+					checksum = _crc16_update(~0, ctrl.sync_lsb);
 
 					//store the HDR byte
 					ctrl.rf_buffer_in->buffer[1] = data;
@@ -282,7 +281,7 @@ ISR(RFM12_INT_VECT, ISR_NOBLOCK)
 				if (ctrl.rf_buffer_in->buffer[1] & HDR_ACK)
 				{
 					rf_tx_buffer.ack[0] = SYNC_MSB;
-					rf_tx_buffer.ack[1] = SYNC_LSB;
+					rf_tx_buffer.ack[1] = ctrl.sync_lsb;
 					rf_tx_buffer.ack[2] = HDR_CTL | (ctrl.rf_buffer_in->buffer[1] & HDR_NODE_ID);
                     // we reply differently to unicast or broadcast packets
 					rf_tx_buffer.ack[2] |= (ctrl.rf_buffer_in->buffer[1] & HDR_DST) ? 0 : HDR_DST;
@@ -579,6 +578,11 @@ void rfm12_tick(void)
 	}
 #endif /* !(RFM12_TRANSMIT_ONLY) */
 
+void rfm12_grp_set(uint8_t grp)
+{
+	ctrl.sync_lsb = grp;
+	rfm12_data(RFM12_CMD_SYNCPATTERN | grp);
+}
 
 //! This is the main library initialization function
 /**This function takes care of all module initialization, including:
