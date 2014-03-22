@@ -286,6 +286,8 @@ ISR(RFM12_INT_VECT, ISR_NOBLOCK)
 					rf_tx_buffer.ack[2] = HDR_CTL | (ctrl.rf_buffer_in->buffer[1] & HDR_NODE_ID);
                     // we reply differently to unicast or broadcast packets
 					rf_tx_buffer.ack[2] |= (ctrl.rf_buffer_in->buffer[1] & HDR_DST) ? 0 : HDR_DST;
+					// we reply differently to OAM or non-OAM packets
+					rf_tx_buffer.ack[2] |= (ctrl.rf_buffer_in->buffer[1] & HDR_CTL) ? HDR_ACK : 0;
 					rf_tx_buffer.ack[3] = 0x00;
 
                     //CRC-16 is calculated over entire packet except SYN(1)
