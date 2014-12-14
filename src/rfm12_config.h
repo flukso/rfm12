@@ -105,7 +105,7 @@
 #define RFM12_BASEBAND RFM12_BAND_868
 
 //center frequency to use (+-125kHz FSK frequency shift)
-#define FREQ 868000000UL
+#define FREQ 868300000UL
 
 //use this for datarates >= 2700 Baud
 #define DATARATE_VALUE RFM12_DATARATE_CALC_HIGH(49200.0)
