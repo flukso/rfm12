@@ -270,13 +270,13 @@ ISR(RFM12_INT_VECT, ISR_NOBLOCK)
 				#if RFM12_UART_DEBUG >= 2
 					uart_putc('D');
 				#endif
-/*
+
 				if (checksum != 0)
 				{
 					//if the checksum does not match, reset the fifo
 					break;
 				}
-*/
+
 				//check whether the sensor node requested an ack 
 				if (ctrl.rf_buffer_in->buffer[1] & HDR_ACK)
 				{
