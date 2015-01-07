@@ -270,13 +270,13 @@ ISR(RFM12_INT_VECT, ISR_NOBLOCK)
 				#if RFM12_UART_DEBUG >= 2
 					uart_putc('D');
 				#endif
-
+/*
 				if (checksum != 0)
 				{
 					//if the checksum does not match, reset the fifo
 					break;
 				}
-
+*/
 				//check whether the sensor node requested an ack 
 				if (ctrl.rf_buffer_in->buffer[1] & HDR_ACK)
 				{
@@ -626,8 +626,8 @@ void rfm12_init(void)
 	//set rx parameters: int-in/vdi-out pin is vdi-out,
 	//Bandwith, LNA, RSSI
 	rfm12_data(RFM12_CMD_RXCTRL | RFM12_RXCTRL_P16_VDI
-			| RFM12_RXCTRL_VDI_FAST | RFM12_RXCTRL_BW_134 | RFM12_RXCTRL_LNA_0
-			| RFM12_RXCTRL_RSSI_91 );
+			| RFM12_RXCTRL_VDI_FAST | RFM12_RXCTRL_BW_200 | RFM12_RXCTRL_LNA_0
+			| RFM12_RXCTRL_RSSI_97);
 
 	//automatic clock lock control(AL), digital Filter(!S),
 	//Data quality detector value 4, slow clock recovery lock
