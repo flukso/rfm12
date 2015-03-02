@@ -627,7 +627,7 @@ void rfm12_init(void)
 	//Bandwith, LNA, RSSI
 	rfm12_data(RFM12_CMD_RXCTRL | RFM12_RXCTRL_P16_VDI
 			| RFM12_RXCTRL_VDI_FAST | RFM12_RXCTRL_BW_200 | RFM12_RXCTRL_LNA_0
-			| RFM12_RXCTRL_RSSI_97);
+			| RFM12_RXCTRL_RSSI_91);
 
 	//automatic clock lock control(AL), digital Filter(!S),
 	//Data quality detector value 4, slow clock recovery lock
